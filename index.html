@@ -4,32 +4,41 @@
   <meta charset="UTF-8">
   <title>SVG 2 PNG</title>
   <style>
+    :root{color-scheme:dark only}
+    *{color:#fff}
     body{
       font-family:sans-serif;padding:2rem;
       background:#111;color:#fff;border-radius:12px;
       user-select:none
     }
-    input{margin-top:1rem;display:block}
+    input{margin-top:1rem;display:inline;background:#222;border:0;padding:6px;border-radius:6px}
     #output{margin-top:1rem;max-width:100%;-webkit-user-drag:none;cursor:pointer}
+    span{font-size:12px}
   </style>
 </head>
 <body>
 
 <h2 style="margin:0">SVG 2 PNG</h2>
-<input type="number"id="px"placeholder="px"value="512"min="1">
+<input type="number"id="px"placeholder="px"value="512"min="1"max="16384"><span> PX</span>
+
+<input type="number"id="rot"placeholder="Rotation"min="0"max="360"value="0"><span> PI</span>
+<br>
 <input type="file"id="svg"accept=".svg">
 <img id="output"style="background:#222">
 <canvas id="canvas"style="display:none;"></canvas>
 
 <script>
   const px=document.getElementById('px');px.value=Number(localStorage.px)||px.value;
+  const rot=document.getElementById('rot');
   const svg=document.getElementById('svg');
   const output=document.getElementById('output');
   var cFile;
   const convert=(f)=>{
     const size=Math.min(Math.max(parseInt(px.value),1),1024*16)||512;
     px.value=localStorage.px=size;
-    const file=f||svg.files[0]||cFile;if(!file)return alert('Choose SVG file');
+    const rotate=parseInt(rot.value)%360||0;
+    rot.value=rotate;
+    const file=f||svg.files[0]||cFile;if(!file)return;//alert('Choose SVG file');
     cFile=file;
     const reader=new FileReader();
     reader.onload=function(e){
@@ -40,16 +49,17 @@
       img.onload=function(){
         const canvas=document.getElementById('canvas');
         const ctx=canvas.getContext('2d');
-        //const size=Math.min(Math.max(parseInt(px.value),1),1024);
         px.value=canvas.width=canvas.height=size;
-        ctx.drawImage(img,0,0,size,size);
+        ctx.translate(size/2,size/2);
+        ctx.rotate((rotate*Math.PI)/180);
+        ctx.drawImage(img,-size/2,-size/2,size,size);
         output.src=canvas.toDataURL('image/png');
         output.style.display='block';
         URL.revokeObjectURL(url);
         output.onclick=()=>{
           const link=document.createElement('a');
-          link.download=file.name.replace('.svg','.png')
-          link.href=canvas.toDataURL('image/png');
+          link.download=file.name.replace(/svg$/,'png');
+          link.href=output.src;//canvas.toDataURL('image/png');
           link.click();
         }
       };
@@ -57,27 +67,34 @@
     };
     reader.readAsText(file);
   }
-  px.onchange=svg.onchange=()=>convert();
+  rot.onchange=px.onchange=()=>convert();
+  svg.addEventListener('change',()=>convert())
   window.ondragover=e=>{
     e.preventDefault();
     const items=e.dataTransfer.items;
     const[item]=items;//console.log(item);
-    document.body.style.boxShadow=
+    //document.body
+    svg.style.boxShadow=
     item.kind=='file'&&item.type.startsWith('image/svg')&&items.length==1
     &&'0 0 0 3px #69ff69'||'0 0 0 3px #ff6969';
   };
   window.ondragleave=e=>{
     e.preventDefault();if(e.fromElement)return;
-    document.body.style.boxShadow=null;
+    //document.body
+    svg.style.boxShadow=null;
   }
   window.ondrop=e=>{
     e.preventDefault();
-    document.body.style.boxShadow=null;
+    //document.body
+    svg.style.boxShadow=null;
     const files=e.dataTransfer.files;if(files.length>1)return alert("1 SVG file only");
     const[file]=files;//console.log(file);
     if(!(file.type.startsWith('image/svg')&&file.name.endsWith('.svg')))return alert(".svg file only");
-    return convert(file);
+    svg.files=files;svg.dispatchEvent(new Event('change'));
+    //return convert(file);
   }
+  px.onwheel=e=>(px.valueAsNumber+=e.deltaY>0?-2:2,convert());
+  rot.onwheel=e=>(rot.valueAsNumber+=e.deltaY>0?-1:1,convert());
 </script>
 </body>
 </html>
