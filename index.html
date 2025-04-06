@@ -58,7 +58,7 @@
 
     reader.readAsText(file);
   }
-  px.onchange=svg.onchange=convert;
+  px.onchange=svg.onchange=()=>convert();
   //document.getElementById('svgFile').addEventListener('change',convert);
 
   window.ondragover=e=>{
